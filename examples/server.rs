@@ -15,6 +15,7 @@ use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct User {
@@ -64,6 +65,7 @@ impl AppState {
     }
 
     async fn create_user(&self, req: CreateUserRequest) -> Result<User, StatusCode> {
+        info!("create_user, req: {req:?}");
         let salt = SaltString::generate(&mut OsRng);
         let password_hash = self
             .inner
@@ -137,13 +139,14 @@ impl AppState {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     let app_state = AppState::new();
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users", get(list_users))
-        .route("/users/:id", get(get_user))
-        .route("/users/:id", put(update_user))
-        .route("/users/:id", delete(delete_user))
+        .route("/users/{id}", get(get_user))
+        .route("/users/{id}", put(update_user))
+        .route("/users/{id}", delete(delete_user))
         .route("/health", get(health))
         .with_state(app_state);
 

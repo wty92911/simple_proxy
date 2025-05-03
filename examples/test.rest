@@ -1,0 +1,34 @@
+# Rest Client
+
+### Health Check
+GET http://localhost:3000/health
+
+### Create User
+POST http://localhost:6188/users
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "securepassword123"
+}
+
+### List Users
+GET http://localhost:3000/users
+
+### Get User by ID
+GET http://localhost:3000/users/1
+
+### Update User
+PUT http://localhost:3000/users/1
+Content-Type: application/json
+
+{
+    "name": "John Updated",
+    "email": "john.updated@example.com",
+    "password": "newpassword123"
+}
+
+### Delete User
+DELETE http://localhost:3000/users/1
+
