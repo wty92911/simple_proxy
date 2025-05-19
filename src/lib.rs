@@ -1,7 +1,14 @@
 use async_trait::async_trait;
+use conf::ProxyConfig;
 use pingora::{http::ResponseHeader, prelude::*};
 use tracing::info;
+pub mod conf;
+
 pub struct SimpleProxy {}
+
+pub struct ProxyContext {
+    pub config: ProxyConfig,
+}
 
 #[async_trait]
 impl ProxyHttp for SimpleProxy {
