@@ -1,5 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
+use rand::seq::SliceRandom;
+
 use super::{GlobalConfig, ServerConfig, SimpleProxyConfig, TlsConfig, UpstreamConfig};
 
 #[derive(Debug, Clone)]
@@ -125,6 +127,13 @@ impl ServerConfigResolved {
             .ok_or(anyhow::anyhow!("upstream not found"))?
             .clone();
         Ok(Self { upstream, tls })
+    }
+
+    pub fn choose(&self) -> Option<&str> {
+        self.upstream
+            .servers
+            .choose(&mut rand::thread_rng())
+            .map(|s| s.as_str())
     }
 }
 

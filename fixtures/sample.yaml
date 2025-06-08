@@ -2,7 +2,9 @@
 global:
   port: 8080
   # could be empty for no tls or specify cert name
-  tls: ~
+  tls:
+    cert: ./fixtures/certs/sample.crt
+    key: ./fixtures/certs/sample.key
 
 # Server configurations
 servers:

@@ -1,11 +1,13 @@
 mod raw;
 mod resolved;
 
-use std::sync::Arc;
+use std::{path::Path, sync::Arc};
 
 use arc_swap::ArcSwap;
 pub use raw::*;
 pub use resolved::*;
+
+#[derive(Clone)]
 
 pub struct ProxyConfig(Arc<ArcSwap<SimpleProxyConfigResolved>>);
 
@@ -13,6 +15,11 @@ impl ProxyConfig {
     pub fn new(config: SimpleProxyConfigResolved) -> Self {
         let config = Arc::new(ArcSwap::new(Arc::new(config)));
         Self(config)
+    }
+
+    pub fn load(file: impl AsRef<Path>) -> anyhow::Result<Self> {
+        let config = SimpleProxyConfig::new(file);
+        Ok(Self::new(config.try_into()?))
     }
 
     pub fn update(&self, config: SimpleProxyConfigResolved) {
