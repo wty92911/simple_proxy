@@ -10,12 +10,14 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use chrono::{DateTime, Utc};
+use clap::Parser;
 use dashmap::DashMap;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use tracing::info;
+use std::{net::SocketAddr, sync::Arc};
+use tracing::{error, info};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct User {
@@ -137,6 +139,25 @@ impl AppState {
     }
 }
 
+#[derive(Parser)]
+struct Args {
+    #[arg(short, long)]
+    #[arg(default_value = "3001")]
+    port: u16,
+
+    #[arg(short, long)]
+    #[arg(default_value = "true")]
+    tls: bool,
+
+    #[arg(long)]
+    #[arg(default_value = "./fixtures/certs/backend.crt")]
+    cert: PathBuf,
+
+    #[arg(long)]
+    #[arg(default_value = "./fixtures/certs/backend.key")]
+    key: PathBuf,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -150,9 +171,35 @@ async fn main() {
         .route("/health", get(health))
         .with_state(app_state);
 
-    println!("Server running on http://localhost:3000");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let args = Args::parse();
+    let socket_addr = SocketAddr::from(([127, 0, 0, 1], args.port));
+
+    if args.tls {
+        info!("Starting server with TLS on {}", socket_addr);
+
+        // Check if certificate files exist
+        if !args.cert.exists() || !args.key.exists() {
+            error!(
+                "TLS certificate or key file not found. Generate them with './scripts/generate_tls_certs.sh'"
+            );
+            std::process::exit(1);
+        }
+
+        // Load TLS config
+        let config = axum_server::tls_rustls::RustlsConfig::from_pem_file(&args.cert, &args.key)
+            .await
+            .expect("Failed to load TLS configuration");
+
+        info!("Server running on https://{}", socket_addr);
+        axum_server::bind_rustls(socket_addr, config)
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    } else {
+        info!("Server running on http://{}", socket_addr);
+        let listener = tokio::net::TcpListener::bind(socket_addr).await.unwrap();
+        axum::serve(listener, app).await.unwrap();
+    }
 }
 
 async fn create_user(
@@ -166,6 +213,7 @@ async fn create_user(
 }
 
 async fn get_user(State(state): State<AppState>, Path(id): Path<u64>) -> impl IntoResponse {
+    info!("get_user request, id: {id}");
     match state.get_user(id).await {
         Ok(user) => (StatusCode::OK, Json(user)).into_response(),
         Err(status) => status.into_response(),
@@ -173,6 +221,7 @@ async fn get_user(State(state): State<AppState>, Path(id): Path<u64>) -> impl In
 }
 
 async fn list_users(State(state): State<AppState>) -> impl IntoResponse {
+    info!("list_users request");
     let users = state.list_users().await;
     (StatusCode::OK, Json(users)).into_response()
 }
@@ -182,6 +231,7 @@ async fn update_user(
     Path(id): Path<u64>,
     Json(req): Json<UpdateUserRequest>,
 ) -> impl IntoResponse {
+    info!("update_user request, id: {id}, req: {req:?}");
     match state.update_user(id, req).await {
         Ok(user) => (StatusCode::OK, Json(user)).into_response(),
         Err(status) => status.into_response(),
@@ -189,6 +239,7 @@ async fn update_user(
 }
 
 async fn delete_user(State(state): State<AppState>, Path(id): Path<u64>) -> impl IntoResponse {
+    info!("delete_user request, id: {id}");
     match state.delete_user(id).await {
         Ok(_) => StatusCode::NO_CONTENT.into_response(),
         Err(status) => status.into_response(),
@@ -196,6 +247,7 @@ async fn delete_user(State(state): State<AppState>, Path(id): Path<u64>) -> impl
 }
 
 async fn health(State(state): State<AppState>) -> impl IntoResponse {
+    info!("health check request");
     state.health().await
 }
 

@@ -18,9 +18,10 @@ keywords = []
 argon2 = "0.5"
 async-trait="0.1"
 axum = "0.8"
+axum-server = { version = "0.6", features = ["tls-rustls"] }
 chrono = { version = "0.4", features = ["serde"] }
 dashmap = "6.1"
-pingora = { version = "0.4", features = [ "lb" ] }
+pingora = { version = "0.4", features = [ "lb", "rustls" ] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

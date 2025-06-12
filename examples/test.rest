@@ -1,10 +1,10 @@
 # Rest Client
 
 ### Health Check
-GET http://localhost:3000/health
+GET https://acme.com:3000/health
 
-### Create User
-POST http://localhost:6188/users
+
+
 Content-Type: application/json
 
 {

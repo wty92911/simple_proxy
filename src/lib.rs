@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use axum::http::StatusCode;
 use conf::ProxyConfig;
 use pingora::{http::ResponseHeader, prelude::*};
+use tracing::info;
 pub mod conf;
 
 #[derive(Clone)]
@@ -44,6 +45,10 @@ impl ProxyHttp for SimpleProxy {
         session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
+        info!(
+            "upstream_peer, request headers: {:?}",
+            session.req_header().headers
+        );
         let config = ctx.config.load();
         if let Some(host) = session
             .req_header()
@@ -62,7 +67,9 @@ impl ProxyHttp for SimpleProxy {
                             None,
                         ));
                     };
-                    let peer = HttpPeer::new(upstream, false, host.to_string());
+
+                    // Set up TLS for upstream connection if configured
+                    let peer = HttpPeer::new(upstream, server.tls, host.to_string());
                     Ok(Box::new(peer))
                 }
                 None => {

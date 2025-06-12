@@ -1,10 +1,11 @@
 # Global configurations
 global:
-  port: 8080
+  port: 3000
   # could be empty for no tls or specify cert name
   tls:
-    cert: ./fixtures/certs/sample.crt
-    key: ./fixtures/certs/sample.key
+    cert: ./fixtures/certs/proxy.crt
+    key: ./fixtures/certs/proxy.key
+    ca: ./fixtures/certs/ca.crt
 
 # Server configurations
 servers:
@@ -12,7 +13,7 @@ servers:
       - acme.com
       - www.acme.com
     upstream: web_servers
-    tls: false
+    tls: true
   - server_name:
       - api.acme.com
     upstream: api_servers
