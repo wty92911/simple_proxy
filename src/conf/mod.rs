@@ -7,13 +7,11 @@ use arc_swap::ArcSwap;
 pub use raw::*;
 pub use resolved::*;
 
-#[derive(Clone)]
-
-pub struct ProxyConfig(Arc<ArcSwap<SimpleProxyConfigResolved>>);
+pub struct ProxyConfig(ArcSwap<SimpleProxyConfigResolved>);
 
 impl ProxyConfig {
     pub fn new(config: SimpleProxyConfigResolved) -> Self {
-        let config = Arc::new(ArcSwap::new(Arc::new(config)));
+        let config = ArcSwap::new(Arc::new(config));
         Self(config)
     }
 

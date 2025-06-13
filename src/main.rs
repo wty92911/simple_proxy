@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use clap::{Parser, arg};
 use pingora::{listeners::tls::TlsSettings, prelude::*, server::configuration::ServerConf};
-use simple_proxy::SimpleProxy;
 use simple_proxy::conf::ProxyConfig;
+use simple_proxy::proxy::SimpleProxy;
 use tracing::info;
 
 #[derive(Parser)]
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     };
     let mut my_server = Server::new_with_opt_and_conf(None, server_conf);
     my_server.bootstrap();
-    let sp = SimpleProxy::new(config);
+    let sp = SimpleProxy::try_new(config)?;
 
     let port = sp.config().get().global.port;
     let proxy_addr = format!("0.0.0.0:{}", port);

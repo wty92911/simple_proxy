@@ -34,3 +34,5 @@ anyhow = "1.0.98"
 arc-swap = "1.7.1"
 clap = { version = "4.5.39", features = ["derive"] }
 bytes = "1.10.1"
+papaya = "0.2.1"
+pingora-load-balancing = "0.5.0"
