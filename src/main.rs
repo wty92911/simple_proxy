@@ -1,9 +1,8 @@
-use std::path::PathBuf;
-
 use clap::{Parser, arg};
 use pingora::{listeners::tls::TlsSettings, prelude::*, server::configuration::ServerConf};
 use simple_proxy::conf::ProxyConfig;
-use simple_proxy::proxy::SimpleProxy;
+use simple_proxy::proxy::{HealthCheck, SimpleProxy};
+use std::path::PathBuf;
 use tracing::info;
 
 #[derive(Parser)]
@@ -28,6 +27,8 @@ fn main() -> anyhow::Result<()> {
     my_server.bootstrap();
     let sp = SimpleProxy::try_new(config)?;
 
+    let health_check = HealthCheck::new(sp.route_table().clone());
+
     let port = sp.config().get().global.port;
     let proxy_addr = format!("0.0.0.0:{}", port);
     let mut proxy = http_proxy_service(&my_server.configuration, sp);
@@ -44,7 +45,7 @@ fn main() -> anyhow::Result<()> {
             info!("proxy server started at http://{}", proxy_addr);
         }
     }
-
+    my_server.add_service(health_check);
     my_server.add_service(proxy);
     my_server.run_forever();
 }

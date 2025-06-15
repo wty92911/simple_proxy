@@ -1,9 +1,16 @@
 # Rest Client
 
-### Health Check
+### Health Check on simple-proxy
 GET https://acme.com:3000/health
 
+### Health Check on simple-proxy
+GET https://api.acme.com:3000/health
 
+### Health Check on server 1
+GET https://localhost:3001/health
+
+### Health Check on server 2
+GET https://localhost:3002/health
 
 Content-Type: application/json
 

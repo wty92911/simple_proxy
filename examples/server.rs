@@ -4,9 +4,10 @@ use argon2::{
 };
 use axum::{
     Json, Router,
-    extract::{Path, State},
-    http::StatusCode,
-    response::IntoResponse,
+    extract::{Path, Request, State},
+    http::{StatusCode, header},
+    middleware::Next,
+    response::{IntoResponse, Response},
     routing::{delete, get, post, put},
 };
 use chrono::{DateTime, Utc};
@@ -47,6 +48,7 @@ struct UpdateUserRequest {
 #[derive(Clone)]
 struct AppState {
     inner: Arc<AppStateInner>,
+    addr: SocketAddr,
 }
 
 struct AppStateInner {
@@ -56,8 +58,9 @@ struct AppStateInner {
 }
 
 impl AppState {
-    fn new() -> Self {
+    fn new(addr: SocketAddr) -> Self {
         Self {
+            addr,
             inner: Arc::new(AppStateInner {
                 argon2: Argon2::default(),
                 next_id: AtomicU64::new(1),
@@ -158,10 +161,34 @@ struct Args {
     key: PathBuf,
 }
 
+async fn my_middleware(
+    State(state): State<AppState>,
+    // you can add more extractors here but the last
+    // extractor must implement `FromRequest` which
+    // `Request` does
+    request: Request,
+    next: Next,
+) -> Response {
+    // do something with `request`...
+
+    let mut response = next.run(request).await;
+
+    // do something with `response`...
+    response.headers_mut().insert(
+        "X-Server-Info",
+        header::HeaderValue::from_str(&state.addr.to_string()).unwrap(),
+    );
+
+    response
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let app_state = AppState::new();
+    let args = Args::parse();
+    let socket_addr = SocketAddr::from(([127, 0, 0, 1], args.port));
+
+    let app_state = AppState::new(socket_addr);
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users", get(list_users))
@@ -169,10 +196,11 @@ async fn main() {
         .route("/users/{id}", put(update_user))
         .route("/users/{id}", delete(delete_user))
         .route("/health", get(health))
+        .layer(axum::middleware::from_fn_with_state(
+            app_state.clone(),
+            my_middleware,
+        ))
         .with_state(app_state);
-
-    let args = Args::parse();
-    let socket_addr = SocketAddr::from(([127, 0, 0, 1], args.port));
 
     if args.tls {
         info!("Starting server with TLS on {}", socket_addr);
@@ -258,7 +286,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let req = CreateUserRequest {
             name: "Test User".to_string(),
             email: "test@example.com".to_string(),
@@ -275,7 +304,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let req = CreateUserRequest {
             name: "Test User".to_string(),
             email: "test@example.com".to_string(),
@@ -293,14 +323,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_nonexistent_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let result = state.get_user(999).await;
         assert_eq!(result.unwrap_err(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
     async fn test_list_users() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
 
         // Create multiple users
         for i in 0..3 {
@@ -318,7 +350,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let req = CreateUserRequest {
             name: "Original Name".to_string(),
             email: "original@example.com".to_string(),
@@ -342,7 +375,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_nonexistent_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let update_req = UpdateUserRequest {
             name: Some("New Name".to_string()),
             email: None,
@@ -355,7 +389,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let req = CreateUserRequest {
             name: "Test User".to_string(),
             email: "test@example.com".to_string(),
@@ -373,14 +408,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_nonexistent_user() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let result = state.delete_user(999).await;
         assert_eq!(result.unwrap_err(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
     async fn test_health() {
-        let state = AppState::new();
+        let socket_addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+        let state = AppState::new(socket_addr);
         let result = state.health().await;
         assert!(result.is_ok());
     }

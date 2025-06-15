@@ -44,6 +44,10 @@ impl SimpleProxy {
     pub fn config(&self) -> &ProxyConfig {
         &self.config
     }
+
+    pub fn route_table(&self) -> &RouteTable {
+        &self.route_table
+    }
 }
 
 #[async_trait]
